@@ -5,10 +5,6 @@ trash, label) using Gmail search queries.
 
 ## 1. Create OAuth credentials (one-time, in your own browser)
 
-This tool authorizes using Google's **device-code flow**, since it runs
-headless. That requires an OAuth client of type **"TVs and Limited Input
-devices"**:
-
 1. Go to https://console.cloud.google.com/ and create a project (or pick an
    existing one).
 2. Enable the **Gmail API**: APIs & Services -> Library -> search "Gmail API"
@@ -19,7 +15,7 @@ devices"**:
    avoids Google's app-verification process and works fine for personal use
    (you'll see an "unverified app" warning when authorizing; that's expected).
 4. Create credentials (APIs & Services -> Credentials -> Create Credentials ->
-   OAuth client ID) with application type **"TVs and Limited Input devices"**.
+   OAuth client ID) with application type **"Desktop app"**.
 5. Download the JSON and save it as `credentials.json` in this directory.
    **Never commit this file** — it's already in `.gitignore`.
 
@@ -31,13 +27,25 @@ pip install -r requirements.txt
 
 ## 3. Authorize
 
+This container can't run a browser or catch a localhost redirect directly,
+so authorization is done in two manual steps:
+
 ```
-python auth.py
+python auth.py start
 ```
 
-This prints a URL and a short code. Open the URL on any device, sign in, and
-enter the code. A `token.json` is saved locally (also gitignored) — this is
-what actually grants access to your mailbox, so treat it like a password.
+This prints a Google consent URL. Open it in your own browser, sign in, and
+approve access. Your browser will then try to load
+`http://localhost:8080/?code=...` and fail to connect — that's expected,
+nothing is listening on that port. Copy the full URL from the address bar
+and run:
+
+```
+python auth.py finish "<pasted url>"
+```
+
+A `token.json` is saved locally (gitignored) — this is what actually grants
+access to your mailbox, so treat it like a password.
 
 ## 4. See what's in your inbox
 
