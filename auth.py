@@ -22,7 +22,7 @@ import requests
 SCOPES = ["https://www.googleapis.com/auth/gmail.modify"]
 AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
 TOKEN_URL = "https://oauth2.googleapis.com/token"
-REDIRECT_URI = "http://localhost:8080/"
+REDIRECT_URI = "http://127.0.0.1:8080/"
 CREDENTIALS_FILE = "credentials.json"
 TOKEN_FILE = "token.json"
 

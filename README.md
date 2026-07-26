@@ -36,7 +36,7 @@ python auth.py start
 
 This prints a Google consent URL. Open it in your own browser, sign in, and
 approve access. Your browser will then try to load
-`http://localhost:8080/?code=...` and fail to connect — that's expected,
+`http://127.0.0.1:8080/?code=...` and fail to connect — that's expected,
 nothing is listening on that port. Copy the full URL from the address bar
 and run:
 
