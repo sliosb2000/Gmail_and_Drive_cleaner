@@ -49,7 +49,7 @@ def start():
     print(url)
     print(
         "\nAfter approving, the browser will try to load "
-        "http://localhost:8080/?code=... and fail to connect. That's "
+        "http://127.0.0.1:8080/?code=... and fail to connect. That's "
         "expected. Copy the full URL from the address bar and run:\n"
         "  python auth.py finish \"<pasted url>\"\n"
     )
