@@ -1,0 +1,23 @@
+# Triage rules. Each rule is a Gmail search query (same syntax as the Gmail
+# search box) plus an action to apply to every matching message.
+#
+# Actions: archive | trash | add_label:<LabelName>
+#
+# Nothing here runs automatically — `python triage.py run` is dry-run by
+# default and only prints what it *would* do. Pass --apply to execute.
+
+rules:
+  - name: archive-old-promotions
+    query: "category:promotions older_than:30d"
+    action: archive
+    enabled: true
+
+  - name: archive-old-social
+    query: "category:social older_than:30d"
+    action: archive
+    enabled: true
+
+  - name: trash-old-read-promotions
+    query: "category:promotions is:read older_than:180d"
+    action: trash
+    enabled: false
