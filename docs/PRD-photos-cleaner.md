@@ -85,6 +85,10 @@ rather than pretending they don't exist:
 - **Everything undoable inside the app.** Decisions are app-side labels until
   the user executes them (§7.5); an Undo stack and a per-bucket review grid
   let the user reverse anything before acting.
+- **No decision is ever lost.** Every triage action is durably persisted the
+  instant it's made (§7.6). Closing the tab, a browser crash, a phone dying
+  mid-swipe — none of it loses more than the single in-flight decision, and
+  the app resumes exactly where the user left off.
 
 ## 7. Features
 
@@ -141,13 +145,21 @@ estimated reclaimable size:
 - Resume button → drops straight into the next undecided item (< 1 s).
 
 ### 7.5 Acting on buckets (assisted-manual execution)
-Because the API cannot delete or re-album existing photos (§5):
+Because the API cannot delete or re-album existing photos (§5), the final
+destructive step is always performed **by the user, manually, on their phone**
+in the Google Photos app. The web app's job is to make that phone session as
+short and mechanical as possible:
 
-- **Delete bucket → guided deletion:** the app opens each staged item directly
-  in Google Photos (deep link) in sequence — user presses the app's "next"
-  after deleting, or uses a split-screen checklist view. For Takeout-sourced
-  cleanups, the app also exports a filename/date manifest to search-and-delete
-  in batches. Deleted items are confirmed in-app → move to "saved" tally.
+- **Delete bucket → phone deletion checklist:** the app renders the staged
+  items as a mobile-friendly checklist (thumbnail, date, filename), ordered to
+  match Google Photos' own timeline so the user can walk both apps in
+  parallel. Each item has a **deep link that opens it directly in the Google
+  Photos app** on the phone — tap link, tap delete, back, check it off, next.
+  Checked-off items move to the "saved" tally. The checklist survives
+  interruption (§7.6): the user can delete 40 photos on the bus, close
+  everything, and pick up at item 41 that evening.
+- For Takeout-sourced cleanups, the app also exports a filename/date manifest
+  usable to search-and-delete in batches on desktop.
   *(Explicitly assisted-manual: this is the price of Google's API policy, and
   the UX goal is to make it as close to one-tap-per-item as possible.)*
 - **Print bucket:** export a zip (Mode B) or a manifest + open-in-Photos links
@@ -158,7 +170,33 @@ Because the API cannot delete or re-album existing photos (§5):
   presented as an opt-in ("creates copies, uses storage until originals are
   deleted").
 
-### 7.6 Fast-launch engineering requirements
+### 7.6 Crash-safe decision persistence (durability requirements)
+
+Triage sessions will be interrupted constantly — tab closed, browser killed,
+phone locked mid-swipe, battery dies. The design treats interruption as the
+normal case, not the exception:
+
+- **Write-per-decision, not write-per-session.** Each triage action (bucket
+  assignment, skip, undo, checklist tick) is committed to IndexedDB in its own
+  transaction *before* the UI advances to the next card. No batching, no
+  "save on exit", no debounce longer than the decision itself.
+- **At most one in-flight decision at risk.** If the app dies between the
+  user's tap and the commit, only that single decision is lost; on relaunch
+  the same card is shown again. Nothing already committed is ever re-asked.
+- **Deterministic resume.** Session state (current lane, position, filters,
+  undo stack) is persisted alongside decisions; relaunch restores the exact
+  card the user was on.
+- **Storage resilience:** request `navigator.storage.persist()` so the browser
+  won't evict the index under storage pressure; detect eviction on launch
+  (index version marker) and fail loud with a re-ingest prompt rather than
+  silently starting over.
+- **Optional export/import of the decision ledger** (single JSON file) as a
+  user-controlled backup and a migration path between browsers/devices.
+- **Execution ticks are decisions too:** the phone deletion checklist (§7.5)
+  uses the same per-action commit path, so progress through a 500-item delete
+  session is never lost.
+
+### 7.7 Fast-launch engineering requirements
 - PWA with service worker: app shell cached, offline-capable review of the
   local index.
 - Index + thumbnails in IndexedDB; virtualized grids (no 10k-DOM-node lists).
@@ -188,14 +226,17 @@ Because the API cannot delete or re-album existing photos (§5):
 | Duplicate-lane precision (staged pairs that are truly duplicates) | ≥ 99% (Mode B), ≥ 95% (Mode A) |
 | Storage reclaimed in first full session | user-visible GB counter; qualitative "felt worth it" |
 | Re-review rate (items triaged twice) | ~0 — decisions must persist |
+| Decisions lost on unexpected app stop (crash/tab-kill/battery) | ≤ 1 (only the in-flight one) |
 
 ## 10. Risks & open questions
 
 1. **Google API policy drift** — the Picker API contract may change again;
    Mode B (Takeout) is the hedge since it's policy-proof.
-2. **Deletion friction** — the assisted-manual delete loop is the weakest UX
-   point; needs prototyping early (deep-link behavior differs between Photos
-   web and mobile). *Prototype in milestone 1.*
+2. **Deletion friction** — the phone deletion checklist is the weakest UX
+   point; needs prototyping early. Deep-link behavior differs across
+   Android/iOS and Photos app versions (per-item links may open the app but
+   not always the exact photo), so the checklist must degrade gracefully to
+   timeline-ordered manual lookup. *Prototype on a real phone in milestone 1.*
 3. **Estimated vs. actual sizes (Mode A)** — storage-saved figures are
    estimates; label them as such to keep trust.
 4. **Thumbnail cache size** — a full-library index can itself take real disk
