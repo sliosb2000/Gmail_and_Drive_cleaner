@@ -47,7 +47,6 @@ def cmd_report(service):
     ids = [m["id"] for m in resp.get("messages", [])]
 
     senders = Counter()
-    batch = service.new_batch_http_request()
 
     def collect(request_id, response, exception):
         if exception is None:
@@ -55,14 +54,16 @@ def cmd_report(service):
             from_header = next((h["value"] for h in headers if h["name"] == "From"), "unknown")
             senders[from_header] += 1
 
-    for mid in ids:
-        batch.add(
-            service.users().messages().get(
-                userId="me", id=mid, format="metadata", metadataHeaders=["From"]
-            ),
-            callback=collect,
-        )
-    if ids:
+    # Gmail caps batch requests at 100 inner calls
+    for i in range(0, len(ids), 100):
+        batch = service.new_batch_http_request()
+        for mid in ids[i:i + 100]:
+            batch.add(
+                service.users().messages().get(
+                    userId="me", id=mid, format="metadata", metadataHeaders=["From"]
+                ),
+                callback=collect,
+            )
         batch.execute()
 
     for sender, count in senders.most_common(15):
