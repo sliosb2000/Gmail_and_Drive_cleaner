@@ -3,21 +3,65 @@
 #
 # Actions: archive | trash | add_label:<LabelName>
 #
-# Nothing here runs automatically — `python triage.py run` is dry-run by
-# default and only prints what it *would* do. Pass --apply to execute.
+# Note: this account has Gmail category tabs disabled, so category: queries
+# match nothing — rules are sender/age based instead (built from a full
+# inbox scan on 2026-08-03).
+#
+# Archive = removes from inbox, still searchable under "All Mail". Nothing
+# here runs automatically — `python triage.py run` is dry-run by default and
+# only prints what it *would* do. Pass --apply to execute.
 
 rules:
-  - name: archive-old-promotions
-    query: "category:promotions older_than:30d"
+  # Pure marketing/newsletter senders — archive after 30 days unread or not
+  - name: archive-old-marketing
+    query: >-
+      from:(hi@creativefabrica.com OR hello@timeleft.com OR
+      marketing@goto.valuevillage.com OR hello@mail.toogoodtogo.fr OR
+      no-reply@toogoodtogo.com OR ebay@reply.ebay.fr OR
+      email@market.temuemail.com OR newsletter@thesify.ai OR
+      no-reply@mail.nordvpn.com OR travel@kiwi.com OR
+      noreply@campaign.eventbrite.com OR viarail@message.viarail.ca OR
+      no-reply@spotify.com OR hi@higgsfield.ai OR no-reply@t.higgsfield.ai)
+      in:inbox older_than:30d
     action: archive
     enabled: true
 
-  - name: archive-old-social
-    query: "category:social older_than:30d"
+  # LinkedIn notification firehose (messages, invitations, updates)
+  - name: archive-old-linkedin
+    query: "from:linkedin.com in:inbox older_than:30d"
     action: archive
     enabled: true
 
-  - name: trash-old-read-promotions
-    query: "category:promotions is:read older_than:180d"
-    action: trash
-    enabled: false
+  # Job-board notification emails
+  - name: archive-old-jobalerts
+    query: "from:(donotreply@match.indeed.com) in:inbox older_than:30d"
+    action: archive
+    enabled: true
+
+  # Receipts & transactional — keep 90 days in inbox, then archive
+  - name: archive-old-receipts
+    query: >-
+      from:(noreply@uber.com OR uber@uber.com OR no-reply@revolut.com)
+      in:inbox older_than:90d
+    action: archive
+    enabled: true
+
+  # Google "new sign-in" security notices — stale after 60 days
+  - name: archive-old-google-alerts
+    query: >-
+      from:(no-reply@accounts.google.com OR google-noreply@google.com)
+      in:inbox older_than:60d
+    action: archive
+    enabled: true
+
+  # Newsletters/course platforms
+  - name: archive-old-courses
+    query: >-
+      from:(aggregate-intellect@courses.maven.com OR maven@list.maven.com OR
+      agentics-foundation@app.disco.co OR agent@agentics.org)
+      in:inbox older_than:30d
+    action: archive
+    enabled: true
+
+  # Deliberately NOT touched: personal mail (family, leboncoin conversations,
+  # lisayrealtor, nacel), bank (lcl@infos.lcl.fr), assurance-maladie.
